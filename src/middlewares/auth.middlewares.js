@@ -1,30 +1,6 @@
 import { connection } from "../database/database.js";
-import { signUpSchema } from "../schemas/auth.schemas.js";
-
-async function signUpValidation(req, res, next) {
-    const { name, email, password, confirmPassword } = req.body;
-    const validation = signUpSchema.validate({ name, email, password, confirmPassword }, { abortEarly: false });
-
-    if(validation.error) {
-        const errorList = validation.error.details.map(error => error.message);
-        return res.status(422).send(errorList);
-    }
-
-    try {
-        const checkUserEmail = (await connection.query(`SELECT * FROM users WHERE email = $1;`, [email])).rows[0];
-
-        if(checkUserEmail) {
-            return res.sendStatus(409);
-        }
-    
-        res.locals.body = { name, email, password };
-        next();
-
-    } catch(error) {
-        console.error(error);
-        return res.sendStatus(500);
-    }
-}
+import { signInSchema, signUpSchema } from "../schemas/auth.schemas.js";
+import bcrypt from "bcrypt";
 
 async function checkAuthorization(req, res, next) {
     const { authorization } = req.headers;
@@ -49,4 +25,52 @@ async function checkAuthorization(req, res, next) {
     }
 }
 
-export { signUpValidation, checkAuthorization };
+async function signUpValidation(req, res, next) {
+    const { name, email, password, confirmPassword } = req.body;
+    const validation = signUpSchema.validate({ name, email, password, confirmPassword }, { abortEarly: false });
+
+    if(validation.error) {
+        const errorList = validation.error.details.map(error => error.message);
+        return res.status(422).send(errorList);
+    }
+
+    try {
+        const checkUserEmail = (await connection.query(`SELECT * FROM users WHERE email = $1;`, [email])).rows[0];
+
+        if(checkUserEmail) return res.sendStatus(409);
+    
+        res.locals.body = { name, email, password };
+        next();
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+async function signInValidation(req, res, next) {
+    const { email, password } = req.body;
+    const validation = signInSchema.validate({ email, password }, { abortEarly: false });
+
+    if(validation.error) {
+        const errorList = validation.error.details.map(error => error.message);
+        return res.status(422).send(errorList);
+    }
+
+    try {
+        const user = (await connection.query(`SELECT * FROM users WHERE email = $1;`, [email])).rows[0];
+        const passwordIsValid = bcrypt.compareSync(password, user.password);
+
+        if(!user || !passwordIsValid) return res.sendStatus(401);
+
+        const userId = user.id;
+        res.locals = userId;
+        next();
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+export { checkAuthorization, signUpValidation, signInValidation };
