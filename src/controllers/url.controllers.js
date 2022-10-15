@@ -20,4 +20,19 @@ async function createShortUrl(req, res) {
     }
 }
 
-export { createShortUrl };
+async function readUrl(req, res) {
+    const { id } = req.params;
+
+    try {
+        const url = (await connection.query(`SELECT id, "shortUrl", url FROM urls WHERE id = $1;`, [id])).rows[0];
+        if(!url) return res.sendStatus(404);
+
+        return res.status(200).send({ url });
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+export { createShortUrl, readUrl };
