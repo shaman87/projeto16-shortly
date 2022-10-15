@@ -24,7 +24,11 @@ async function readUrl(req, res) {
     const { id } = req.params;
 
     try {
-        const url = (await connection.query(`SELECT id, "shortUrl", url FROM urls WHERE id = $1;`, [id])).rows[0];
+        const url = (await connection.query(
+            `SELECT id, "shortUrl", url FROM urls WHERE id = $1;`,
+            [id]
+        )).rows[0];
+            
         if(!url) return res.sendStatus(404);
 
         return res.status(200).send({ url });
@@ -35,4 +39,28 @@ async function readUrl(req, res) {
     }
 }
 
-export { createShortUrl, readUrl };
+async function readOpenUrl(req, res) {
+    const { shortUrl } = req.params;
+
+    try {
+        const url = (await connection.query(
+            `SELECT * FROM urls WHERE "shortUrl" = $1;`, 
+            [shortUrl])
+        ).rows[0];
+
+    if(!url) return res.sendStatus(404);
+
+    await connection.query(
+        `UPDATE urls SET "visitCount" = "visitCount" + 1 WHERE id = $1;`, 
+        [url.id]
+    );
+
+    return res.redirect(url.url);
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+export { createShortUrl, readUrl, readOpenUrl };
