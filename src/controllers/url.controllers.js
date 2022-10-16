@@ -63,4 +63,18 @@ async function readOpenUrl(req, res) {
     }
 }
 
-export { createShortUrl, readUrl, readOpenUrl };
+async function deleteUrl(req, res) {
+    const { urlId } = res.locals;
+
+    try {
+        await connection.query(`DELETE FROM urls WHERE id = $1;`, [urlId]);
+
+        res.sendStatus(204);
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+export { createShortUrl, readUrl, readOpenUrl, deleteUrl };
