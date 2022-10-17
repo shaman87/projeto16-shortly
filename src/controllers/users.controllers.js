@@ -25,4 +25,30 @@ async function readUser(req, res) {
     }
 }
 
-export { readUser };
+async function readRanking(req, res) {
+    try {
+        const rankingList = (await connection.query(`
+        SELECT
+            users.id AS id,
+            users.name AS name,
+            COUNT(urls.*) AS "linksCount",
+            SUM(urls."visitCount") AS "visitCount"
+        FROM
+            users
+            JOIN urls ON users.id = urls."userId"
+        GROUP BY
+            users.id
+        ORDER BY
+            "visitCount" DESC
+        LIMIT 10;
+        `)).rows;
+
+        return res.status(200).send(rankingList);
+
+    } catch(error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+}
+
+export { readUser, readRanking };
